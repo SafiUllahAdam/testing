@@ -176,60 +176,63 @@ def shap_explanation(x_row, pred, shap_vals, top_k=3):
 if st.button("Run Prediction"):
 
     explainer = shap.TreeExplainer(rf_model)
-
     st.subheader("Prediction Results")
-
-    preds = []
 
     for i, event in enumerate(sequence):
 
+        # -------------------------------------------------
+        # 1. Build EMPTY inference row using training schema
+        # -------------------------------------------------
+        x = pd.DataFrame(
+            data=np.zeros((1, len(feature_cols))),
+            columns=feature_cols
+        )
+
+        # -------------------------------------------------
+        # 2. Fill rock features (safe)
+        # -------------------------------------------------
+        for col in rock_features.index:
+            if col in x.columns:
+                x.loc[0, col] = rock_features[col]
+
+        # -------------------------------------------------
+        # 3. Build event features
+        # -------------------------------------------------
         event_feats = build_event_features(event)
 
-        x = pd.concat(
-            [rock_features, pd.Series(event_feats)],
-            axis=0
-        ).to_frame().T
+        for col, val in event_feats.items():
+            if col in x.columns:
+                x.loc[0, col] = val
 
-        # Ensure full feature parity
-        for col in feature_cols:
-            if col not in x.columns:
-                x[col] = 0
-
-        x = x[feature_cols]
+        # -------------------------------------------------
+        # 4. Scale (NOW SAFE)
+        # -------------------------------------------------
         x_scaled = scaler.transform(x)
 
+        # -------------------------------------------------
+        # 5. Predict
+        # -------------------------------------------------
         pred = rf_model.predict(x_scaled)[0]
-        preds.append(pred)
 
+        # -------------------------------------------------
+        # 6. SHAP (IMPORTANT: unscaled x)
+        # -------------------------------------------------
         shap_vals = explainer.shap_values(x)[0]
 
-    # Threshold
-    threshold = np.mean(preds) + np.std(preds)
+        risk, reasons = shap_explanation(
+            x.iloc[0], pred, shap_vals
+        )
 
-    # Display results
-    for i, pred in enumerate(preds):
-
+        # -------------------------------------------------
+        # 7. Display
+        # -------------------------------------------------
         st.markdown(f"### Event {i+1}")
-
-        x = pd.concat(
-            [rock_features, pd.Series(build_event_features(sequence[i]))],
-            axis=0
-        ).to_frame().T
-
-        for col in feature_cols:
-            if col not in x.columns:
-                x[col] = 0
-
-        x = x[feature_cols]
-
-        shap_vals = explainer.shap_values(x)[0]
-
-        risk, reasons = shap_explanation(x.iloc[0], pred, shap_vals)
-
         st.write(f"**Predicted Leachate:** {pred:.2f}")
         st.write(f"**Risk Level:** {risk}")
 
         for r in reasons:
             st.write("•", r)
+
+
 
 
