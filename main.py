@@ -131,7 +131,8 @@ def build_event_features(event):
 # SHAP explanation logic (SAFE)
 # =========================================================
 def shap_explanation(x_row, pred, shap_vals, top_k=3):
-
+    threshold = 100.0
+    risk = "HIGH-RISK" if pred >= threshold else "SAFE"
     feature_names = x_row.index
     contrib = shap_vals
     abs_vals = np.abs(contrib)
@@ -232,6 +233,7 @@ if st.button("Run Prediction"):
 
         for r in reasons:
             st.write("•", r)
+
 
 
 
