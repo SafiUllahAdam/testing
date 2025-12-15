@@ -27,10 +27,7 @@ rock_id = st.sidebar.selectbox(
     sorted(df_rocks["Rock_number"].unique())
 )
 
-sequence_len = st.sidebar.slider(
-    "Sequence Length (events)",
-    1, 15, 5
-)
+sequence_len = st.sidebar.slider("Sequence Length (events)", 1, 15, 5)
 
 rock_features = (
     df_rocks[df_rocks["Rock_number"] == rock_id]
@@ -45,29 +42,10 @@ sequence = []
 for i in range(sequence_len):
     with st.expander(f"Event {i+1}", expanded=True):
 
-        event_type = st.selectbox(
-            "Event type",
-            ["rain", "snow"],
-            key=f"type_{i}"
-        )
-
-        acid = st.slider(
-            "Acidity (0 = none, 1 = acidic)",
-            0.0, 1.0, 0.0,
-            key=f"acid_{i}"
-        )
-
-        temp = st.slider(
-            "Temperature (°C)",
-            -10.0, 30.0, 5.0,
-            key=f"temp_{i}"
-        )
-
-        qty = st.slider(
-            "Event quantity",
-            1.0, 200.0, 150.0,
-            key=f"qty_{i}"
-        )
+        event_type = st.selectbox("Event type", ["rain", "snow"], key=f"type_{i}")
+        acid = st.slider("Acidity (0 = none, 1 = acidic)", 0.0, 1.0, 0.0, key=f"acid_{i}")
+        temp = st.slider("Temperature (°C)", -10.0, 30.0, 5.0, key=f"temp_{i}")
+        qty = st.slider("Event quantity", 1.0, 200.0, 150.0, key=f"qty_{i}")
 
         sequence.append({
             "type": event_type,
@@ -79,7 +57,6 @@ for i in range(sequence_len):
 def build_event_features(event):
 
     feats = {}
-
     feats["is_rain"] = 1 if event["type"] == "rain" else 0
     feats["is_snow"] = 1 if event["type"] == "snow" else 0
     feats["is_acid"] = 1 if event["acid"] > 0 else 0
@@ -99,27 +76,21 @@ def build_event_features(event):
 
     return feats
 
-def explain_event_with_shap_streamlit(
-    x_row,
-    pred,
-    shap_vals,
-    threshold=100,
-    top_k=3
-):
+def explain_event_with_shap_streamlit(x_row, pred, shap_vals, threshold=100, top_k=3):
 
     feature_names = x_row.index
     contrib = shap_vals
-    risk = "HIGH" if pred >= threshold else "LOW"
-
     abs_contrib = np.abs(contrib)
     order = np.argsort(abs_contrib)[::-1]
 
-    def acidity_label(acid_value):
-        if acid_value < 0.1:
+    risk = "HIGH-RISK" if pred >= threshold else "LOW-RISK"
+
+    def acidity_label(v):
+        if v < 0.1:
             return "very low acidity"
-        elif acid_value < 0.3:
+        elif v < 0.3:
             return "low acidity"
-        elif acid_value < 0.7:
+        elif v < 0.7:
             return "moderate acidity"
         else:
             return "very high acidity"
@@ -130,81 +101,88 @@ def explain_event_with_shap_streamlit(
         acid_val = x_row.get("acid_intensity", 0.0)
         acidity_text = acidity_label(acid_val)
 
-        is_heavy_precip = qty > 10
-        is_light_precip = qty < 3
-        is_acidic_event = acid_val > 0.5
-        is_low_acidity = acid_val < 0.1
-
         if name == "event_intensity":
-            if sign > 0:
-                if is_heavy_precip and is_acidic_event:
-                    return f"A strong precipitation event with {acidity_text} pushed the leachate higher."
-                if is_heavy_precip:
-                    return "A strong rainfall/snowfall event pushed the leachate higher."
-                if is_acidic_event:
-                    return f"The event had {acidity_text}, which raised the leachate."
-                return "A high-intensity weather event pushed the leachate higher."
-            else:
-                if is_light_precip and is_low_acidity:
-                    return f"A mild event with {acidity_text} kept the leachate low."
-                if is_light_precip:
-                    return "A weak rainfall/snowfall event produced little runoff, keeping the leachate low."
-                if is_low_acidity:
-                    return f"The event had {acidity_text}, helping keep the leachate low."
-                return "A weak-intensity weather event kept the leachate lower."
+            return (
+                f"A strong precipitation event with {acidity_text} pushed the leachate higher."
+                if sign > 0 else
+                f"A mild precipitation event with {acidity_text} kept the leachate low."
+            )
 
-        if name in ["Event_quantity", "event_quantity"]:
-            return "Heavy rainfall/snowfall increased the leachate." if sign > 0 \
-                 else "Light rainfall/snowfall helped keep the leachate low."
+        if name in ["event_quantity", "Event_quantity"]:
+            return (
+                "Heavy rainfall/snowfall increased the leachate."
+                if sign > 0 else
+                "Light rainfall/snowfall helped keep the leachate low."
+            )
 
         if name == "Temp":
-            return "Warmer temperatures after the event increased the leachate." if sign > 0 \
-                 else "Colder temperatures after the event reduced the leachate."
+            return (
+                "Warmer temperatures after the event increased the leachate."
+                if sign > 0 else
+                "Colder temperatures after the event reduced the leachate."
+            )
 
         if name == "acid_intensity":
-            return f"The event had {acidity_text}, causing more material to dissolve and increasing the leachate." \
-                if sign > 0 else \
-                f"The event had {acidity_text}, so very little material dissolved, helping keep the leachate low."
-
-        if name == "acid_snow":
-            return f"Snowfall with {acidity_text} increased the leachate by dissolving more material." \
-                if sign > 0 else \
-                f"Snowfall with {acidity_text} dissolved little material, helping keep the leachate low."
+            return (
+                f"The event had {acidity_text}, causing more material to dissolve and increasing the leachate."
+                if sign > 0 else
+                f"The event had {acidity_text}, so little material dissolved, keeping the leachate low."
+            )
 
         lname = name.lower()
 
         if lname.startswith("k_"):
-            return "Higher potassium levels increased the leachate." if sign > 0 \
-                 else "Lower potassium levels helped control the leachate."
-
-        if lname.startswith("mg_"):
-            return "Higher magnesium levels increased the leachate." if sign > 0 \
-                 else "Lower magnesium levels helped reduce the leachate."
-
-        if lname.startswith("chloride"):
-            return "Higher chloride levels contributed to increased leachate." if sign > 0 \
-                 else "Lower chloride levels helped keep the leachate low."
+            return (
+                "Higher potassium levels increased the leachate."
+                if sign > 0 else
+                "Lower potassium levels helped control the leachate."
+            )
 
         if lname.startswith("carbonate"):
-            return "Higher carbonate levels increased the leachate." if sign > 0 \
-                 else "Lower carbonate levels helped reduce the leachate."
+            return (
+                "Higher carbonate levels increased the leachate."
+                if sign > 0 else
+                "Lower carbonate levels helped reduce the leachate."
+            )
 
-        return "A change in water chemistry increased the leachate." if sign > 0 \
-            else "Stable water chemistry helped keep the leachate low."
+        return None
 
     explanations = []
 
+    event_priority = [
+        "event_intensity",
+        "event_quantity",
+        "Event_quantity",
+        "Temp",
+        "acid_intensity",
+        "acid_snow"
+    ]
+
+    # PASS 1 — EVENT FEATURES
     for i in order:
         if len(explanations) >= top_k:
             break
-
         name = feature_names[i]
-        val = contrib[i]
+        if name not in event_priority:
+            continue
+        sentence = nice_sentence(name, np.sign(contrib[i]))
+        if sentence:
+            explanations.append(sentence)
 
-        if (risk == "HIGH" and val > 0) or (risk == "LOW" and val < 0):
-            explanations.append(nice_sentence(name, np.sign(val)))
+    # PASS 2 — CHEMISTRY FEATURES
+    for i in order:
+        if len(explanations) >= top_k:
+            break
+        name = feature_names[i]
+        lname = name.lower()
+        if lname.startswith(("k_", "mg_", "chloride", "carbonate")):
+            sentence = nice_sentence(name, np.sign(contrib[i]))
+            if sentence:
+                explanations.append(sentence)
 
-    explanations = list(dict.fromkeys(explanations))
+    if not explanations:
+        explanations.append("Overall water chemistry influenced the leachate behaviour.")
+
     return risk, explanations
 
 if st.button("Run Prediction"):
@@ -214,10 +192,7 @@ if st.button("Run Prediction"):
 
     for i, event in enumerate(sequence):
 
-        x = pd.DataFrame(
-            np.zeros((1, len(feature_cols))),
-            columns=feature_cols
-        )
+        x = pd.DataFrame(np.zeros((1, len(feature_cols))), columns=feature_cols)
 
         for col in rock_features.index:
             if col in x.columns:
@@ -230,16 +205,14 @@ if st.button("Run Prediction"):
 
         x_scaled = scaler.transform(x)
         pred = rf_model.predict(x_scaled)[0]
+
         shap_vals = explainer.shap_values(x)[0]
 
-        risk, reasons = explain_event_with_shap_streamlit(
-            x.iloc[0], pred, shap_vals
-        )
+        risk, reasons = explain_event_with_shap_streamlit(x.iloc[0], pred, shap_vals)
 
-        st.markdown(f"### Explanation")
-        st.write(f"**Predicted Leachate:** {pred:.2f} → **{risk} RISK**")
-        st.write("This event is", risk, "because:")
+        st.markdown("### Explanation")
+        st.write(f"**Predicted Leachate:** {pred:.2f}")
+        st.write(f"**Risk Level:** {risk}")
 
         for r in reasons:
             st.write("•", r)
-
