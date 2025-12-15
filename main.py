@@ -7,9 +7,9 @@ import shap
 # -------------------------------
 # Load artifacts
 # -------------------------------
-rf_model = joblib.load("rf_model.joblib")
-scaler = joblib.load("scaler.joblib")
-feature_cols = joblib.load("feature_cols.joblib")
+rf_model = joblib.load("rf_model (1).joblib")
+scaler = joblib.load("scaler (1).joblib")
+feature_cols = joblib.load("feature_cols (1).joblib")
 df = pd.read_csv("inference_data.csv")
 
 # -------------------------------
@@ -80,4 +80,5 @@ def explain_feature(name, value):
         return f"{name} helped reduce leachate"
 
 for _, r in shap_df.head(3).iterrows():
+
     st.write("•", explain_feature(r["Feature"], r["SHAP"]))
