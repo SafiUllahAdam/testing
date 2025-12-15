@@ -230,7 +230,7 @@ if st.button("Run Prediction"):
 
         x_scaled = scaler.transform(x)
         pred = rf_model.predict(x_scaled)[0]
-        shap_vals = explainer.shap_values(x_scaled)[0]
+        shap_vals = explainer.shap_values(x)[0]
 
         risk, reasons = explain_event_with_shap_streamlit(
             x.iloc[0], pred, shap_vals
@@ -242,3 +242,4 @@ if st.button("Run Prediction"):
 
         for r in reasons:
             st.write("•", r)
+
