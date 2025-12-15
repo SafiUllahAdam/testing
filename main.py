@@ -245,19 +245,62 @@ def explain_event_with_shap_streamlit(
     # ---------- SELECT EXPLANATIONS ----------
     explanations = []
 
-    for i in order:
-        if len(explanations) >= top_k:
-            break
+# PASS 1 — EVENT-DRIVEN FEATURES ONLY (like Colab)
+event_priority = [
+    "event_intensity",
+    "event_quantity",
+    "Event_quantity",
+    "acid_intensity",
+    "acid_snow",
+    "Temp"
+]
 
-        name = feature_names[i]
-        val = contrib[i]
+for i in order:
+    if len(explanations) >= top_k:
+        break
 
-        if (risk == "HIGH" and val <= 0) or (risk == "LOW" and val >= 0):
-            continue
+    name = feature_names[i]
+    if name not in event_priority:
+        continue
 
-        sentence = nice_sentence(name, np.sign(val))
-        if sentence and sentence not in explanations:
-            explanations.append(sentence)
+    val = contrib[i]
+    if (risk == "HIGH" and val <= 0) or (risk == "LOW" and val >= 0):
+        continue
+
+    sentence = nice_sentence(name, np.sign(val))
+    if sentence and sentence not in explanations:
+        explanations.append(sentence)
+
+# PASS 2 — CHEMISTRY FEATURES (K, Mg, Chloride, Carbonate)
+for i in order:
+    if len(explanations) >= top_k:
+        break
+
+    name = feature_names[i]
+    lname = name.lower()
+
+    if not (
+        lname.startswith("k_")
+        or lname.startswith("mg_")
+        or lname.startswith("chloride")
+        or lname.startswith("carbonate")
+    ):
+        continue
+
+    val = contrib[i]
+    if (risk == "HIGH" and val <= 0) or (risk == "LOW" and val >= 0):
+        continue
+
+    sentence = nice_sentence(name, np.sign(val))
+    if sentence and sentence not in explanations:
+        explanations.append(sentence)
+
+# FINAL fallback (extremely rare now)
+if not explanations:
+    explanations.append(
+        "Overall water chemistry influenced the leachate behaviour."
+    )
+
 
     # FINAL fallback (only if nothing selected)
     if not explanations:
@@ -307,4 +350,5 @@ if st.button("Run Prediction"):
 
         for r in reasons:
             st.write("•", r)
+
 
