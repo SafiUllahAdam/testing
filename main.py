@@ -22,9 +22,9 @@ This application predicts **leachate volume after each event** using:
 # =========================================================
 # Load trained artifacts
 # =========================================================
-rf_model = joblib.load("rf_model.joblib")
-scaler = joblib.load("scaler.joblib")
-feature_cols = joblib.load("feature_cols.joblib")
+rf_model = joblib.load("rf_model (1).joblib")
+scaler = joblib.load("scaler (1).joblib")
+feature_cols = joblib.load("feature_cols (1).joblib")
 
 # Load preprocessed training data (for rock chemistry lookup)
 df = pd.read_csv("preprocessed_train_data.csv")
@@ -204,3 +204,4 @@ if st.button("Run Prediction"):
         st.write("**Explanation:**")
         for r in reasons:
             st.write("•", r)
+
