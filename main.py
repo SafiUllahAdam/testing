@@ -27,7 +27,7 @@ scaler = joblib.load("scaler (1).joblib")
 feature_cols = joblib.load("feature_cols (1).joblib")
 
 # Load preprocessed training data (for rock chemistry lookup)
-df = pd.read_csv("preprocessed_train_data.csv")
+df = pd.read_csv("inference_data.csv")
 
 # =========================================================
 # Sidebar — Rock selection
@@ -204,4 +204,5 @@ if st.button("Run Prediction"):
         st.write("**Explanation:**")
         for r in reasons:
             st.write("•", r)
+
 
